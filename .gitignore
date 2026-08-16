@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 虚拟环境（关键！永远不要提交）
+.venv/
+venv/
+env/
+
+# 环境变量与密钥（关键！）
+.env
+.env.*
+!.env.example
+
+# IDE / 系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 日志与临时文件
+*.log
+*.tmp
