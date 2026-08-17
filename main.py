@@ -1,11 +1,11 @@
 """
-Day 2 · FastAPI 进阶：查询参数 + 字段校验 + 依赖注入
+Day 3 · FastAPI 进阶：Pydantic v2 进阶 + response_model + 子依赖 + async
 运行：cd 项目目录后 → uvicorn main:app --port 8000
 文档：http://127.0.0.1:8000/docs
 """
-from fastapi import FastAPI, Query, Path, Depends
+from fastapi import FastAPI, Query, Path, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 app = FastAPI()
 
@@ -16,34 +16,28 @@ fake_items_db = {
     3: {"item_id": 3, "name": "显示器", "price": 1299.0},
 }
 
-# ---- D1 保留：根路由 ----
+# ============ D1 保留：根路由 ============
 @app.get("/")
 def read_root():
     return {"message": "Hello World"}
 
-# ---- 依赖函数：被 Depends 自动调用，返回分页参数 ----
-# 它就是一个普通函数，不需要任何特殊装饰。
-# 关键点：多个接口都要"分页"时，写一次就够了，后面用 Depends 复用。
+
+# ============ D2：查询参数 + 依赖注入 ============
 def common_params(skip: int = 0, limit: int = 100):
     return {"skip": skip, "limit": limit}
 
-# ---- D2 新增①：查询参数 + 依赖注入 ----
-# q 是「查询参数」：写在 URL 的 ? 后面，如 /items/?q=鼠标
-# commons 是「依赖注入」：FastAPI 自动调用 common_params() 把返回值塞进来
+
 @app.get("/items/")
 def read_items(
     q: Optional[str] = Query(None, max_length=50, description="按名称模糊搜索"),
     commons: dict = Depends(common_params),
 ):
     items = list(fake_items_db.values())
-    if q:  # 有搜索词就过滤
+    if q:
         items = [i for i in items if q in i["name"]]
-    # 用 commons 里的 skip/limit 做分页切片
     return items[commons["skip"]: commons["skip"] + commons["limit"]]
 
-# ---- D2 新增②：路径参数 + 字段校验 ----
-# Path(..., gt=0) 含义：item_id 必填（... 表示必填），且必须大于 0
-# 传 /items/0 或 /items/-5 会被自动拦截返回 422，不用你写一行 if 判断
+
 @app.get("/items/{item_id}")
 def read_item(
     item_id: int = Path(..., gt=0, description="商品ID，必须大于0"),
@@ -52,17 +46,81 @@ def read_item(
         return {"error": "not found"}
     return fake_items_db[item_id]
 
-# ---- D2 增强③：请求体模型 + 字段校验 ----
-# Field(..., max_length=50) 含义：name 必填，且最长 50 字符
-# Field(..., gt=0) 含义：price 必填，且必须大于 0（价格不能是负的）
+
+# 请求体模型 + 字段校验（D2）
 class Item(BaseModel):
     name: str = Field(..., max_length=50, description="商品名，最长50字符")
     price: float = Field(..., gt=0, description="价格，必须大于0")
 
-# POST 用增强后的模型：FastAPI 会自动按 Field 规则校验请求体
+
 @app.post("/items/")
 def create_item(item: Item):
     new_id = max(fake_items_db.keys()) + 1
-    # item.model_dump() 把 Pydantic 对象转成普通 dict（Pydantic v2 写法）
     fake_items_db[new_id] = {"item_id": new_id, **item.model_dump()}
     return fake_items_db[new_id]
+
+
+# ============ D3 新增①：Pydantic v2 进阶 — 嵌套模型 + Optional 默认值 ============
+# 嵌套模型：一个模型里包含另一个模型（真实数据常这样，如"用户"含"地址"）
+class Address(BaseModel):
+    city: str
+    street: Optional[str] = None   # Optional + 默认值 None：可不填
+
+
+class User(BaseModel):
+    name: str
+    age: Optional[int] = None      # 可选字段，不传则为 None
+    address: Address                # 嵌套：必须是一个符合 Address 结构的对象
+    tags: List[str] = []            # 带默认值的列表，不传则为空列表 []
+
+
+@app.post("/users/")
+def create_user(user: User):
+    # 嵌套模型 + 列表都会被 FastAPI 自动解析、校验、生成文档
+    return {"msg": "用户已创建", "user": user}
+
+
+# ============ D3 新增②：response_model — 约束「返回」字段 ============
+# 问题：read_item 现在会连 price 一起返回，但有些场景(如对外 API)不想暴露内部价格
+# 解决：定义"对外模型"，只声明允许返回的字段，FastAPI 自动过滤多余字段
+class ItemPublic(BaseModel):
+    item_id: int
+    name: str
+    # 故意不含 price → 返回时自动被剥掉
+
+
+@app.get("/items/{item_id}/public", response_model=ItemPublic)
+def read_item_public(
+    item_id: int = Path(..., gt=0),
+):
+    if item_id not in fake_items_db:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    return fake_items_db[item_id]
+
+
+# ============ D3 新增③：async def 异步路由 ============
+# 写法上只把 def 换成 async def。区别：
+# - async def 函数里可以用 await 调用其他异步操作(如异步查数据库、调大模型API)
+# - 当该接口在 await 等待 I/O 时，事件循环能去处理别的请求 → 高并发
+@app.get("/health")
+async def health():
+    return {"status": "ok", "mode": "async"}
+
+
+# ============ D3 新增④：子依赖（依赖的依赖）============
+# 鉴权是后端刚需：很多接口都要"先验证 token，再取用户信息"
+# 子依赖让它变成可复用的两层：get_token 校验 → get_current_user 取用户
+def get_token(x_token: str = Header(..., description="请求头里带 X-Token")):
+    if x_token != "secret-token":
+        raise HTTPException(status_code=400, detail="无效 Token")
+    return x_token
+
+
+# get_current_user 内部 Depends(get_token) → 这就是"子依赖"：先跑父依赖
+def get_current_user(token: str = Depends(get_token)):
+    return {"username": "cat21233", "token": token}
+
+
+@app.get("/me")
+async def read_me(user: dict = Depends(get_current_user)):
+    return user
