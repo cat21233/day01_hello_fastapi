@@ -10,7 +10,7 @@ from typing import Optional, List
 from fastapi import FastAPI, Query, Path, Depends, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
+import httpx
 app = FastAPI()
 
 # ============ D4 新增①：全局中间件 — 记录请求处理耗时 ============
@@ -155,3 +155,8 @@ def stream_greet(name: str = Query(..., description="你的名字")):
         greet_stream_generator(name),
         media_type="text/event-stream",
     )
+@app.get("/external/users/{user_id}")
+async def get_external_user(user_id: int = Path(..., gt=0, description="用户id")):
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(f"https://jsonplaceholder.typicode.com/users/{user_id}")
+        return resp.json()
