@@ -1,13 +1,28 @@
 """
-Day 3 · FastAPI 进阶：Pydantic v2 进阶 + response_model + 子依赖 + async
+Day 4 · 合并版：D1-D3 基础 + D4 中间件 + SSE 流式响应
 运行：cd 项目目录后 → uvicorn main:app --port 8000
 文档：http://127.0.0.1:8000/docs
 """
-from fastapi import FastAPI, Query, Path, Depends, Header, HTTPException
-from pydantic import BaseModel, Field
+import asyncio
+import time
 from typing import Optional, List
 
+from fastapi import FastAPI, Query, Path, Depends, Header, HTTPException, Request
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
+
 app = FastAPI()
+
+# ============ D4 新增①：全局中间件 — 记录请求处理耗时 ============
+# 中间件对所有请求生效：进站记时 → 放行路由 → 出站把耗时贴到响应头
+@app.middleware("http")
+async def add_process_time(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    cost = time.time() - start
+    response.headers["X-Process-Time"] = str(cost)
+    return response
+
 
 # 内存版"数据库"：重启服务即清空，仅用于演示（真实项目用 MySQL/Redis）
 fake_items_db = {
@@ -124,3 +139,19 @@ def get_current_user(token: str = Depends(get_token)):
 @app.get("/me")
 async def read_me(user: dict = Depends(get_current_user)):
     return user
+
+
+# ============ D4 新增②：SSE 流式响应 ============
+# 流式：客户端发一次请求，服务端持续推送数据（大模型 token 逐字吐字就是这套机制）
+async def greet_stream_generator(name: str):
+    for ch in f"hello,{name}":
+        yield f"data:{ch}\n\n"
+        await asyncio.sleep(0.1)
+
+
+@app.get("/stream/greet")
+def stream_greet(name: str = Query(..., description="你的名字")):
+    return StreamingResponse(
+        greet_stream_generator(name),
+        media_type="text/event-stream",
+    )
