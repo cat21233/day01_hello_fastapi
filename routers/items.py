@@ -26,7 +26,7 @@ def read_item(
     item_id: int = Path(..., gt=0, description="商品ID，必须大于0"),
 ):
     if item_id not in fake_items_db:
-        return {"error": "not found"}
+        raise HTTPException(status_code=404, detail='商品不存在')
     return fake_items_db[item_id]
 
 class ItemPublic(BaseModel):
