@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>SSE 断点续传测试</title>
+</head>
+<body>
+  <h2>SSE 计数器（断点续传测试）</h2>
+  <p>预期：第1条 ~ 第10条 逐条蹦出，然后出现「[收到 end，关闭连接]」并停止，不重复刷。</p>
+  <div id="out"></div>
+
+  <script>
+    const out = document.getElementById('out');
+    const es = new EventSource('http://127.0.0.1:8000/stream/counter');
+
+    es.onmessage = e => {
+      out.innerHTML += e.data + '<br>';
+    };
+
+    es.addEventListener('end', () => {
+      out.innerHTML += '<b>[收到 end，关闭连接]</b>';
+      es.close();
+    });
+
+    es.onerror = () => {
+      out.innerHTML += '<b style="color:red">连接错误或断开</b>';
+    };
+  </script>
+</body>
+</html>

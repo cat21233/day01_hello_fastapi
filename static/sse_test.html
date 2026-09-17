@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="vELAPHRVb2R75OurqPXEwy">
+<head data-page-node-id="tGNiIMLqERTbOGvE0nqKdX">
+<meta charset="utf-8" data-page-node-id="hVcm1gN7xCJbHoSASMzCy7">
+<title>SSE 流式 + 断点续传</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 24px; font-size: 14px; }
+  .row { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type=text], input[type=password] { padding: 4px 6px; }
+  #prompt { width: 320px; }
+  button { padding: 4px 10px; cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .5; }
+  #status { color: #666; margin-left: 8px; }
+  #output { white-space: pre-wrap; line-height: 1.7; background: #f6f6f6;
+            border: 1px solid #ddd; border-radius: 6px; padding: 12px;
+            min-height: 180px; max-height: 60vh; overflow: auto; }
+  .hint { color: #888; font-size: 12px; }
+</style>
+</head>
+<body data-page-node-id="yfZSYVSMeih1fTgZunBhie">
+  <h1 data-page-node-id="b0aCSWIb4XN6DVpNnr3BeY">SSE 流式 + 断点续传</h1>
+
+  <div class="row" data-page-node-id="ybbOrGCsXHDJgoFxpqQC4j">
+    <label data-page-node-id="prcdCVGoD565loHuXV7IcT">用户名 <input type="text" id="user" value="zihao" size="8" data-page-node-id="VzEaq5r7FRckd0bvMNeDLh"></label>
+    <label data-page-node-id="A9BY9sPlrlILzxOQF97xZP">密码 <input type="password" id="pass" value="123456" size="8" data-page-node-id="G6Ylt38UtH051rgdnkyVBZ"></label>
+    <button id="btnLogin" data-page-node-id="FyLaI0SRgC5kQs7PVpq46A">1. 登录取 token</button>
+    <span id="status" data-page-node-id="viRjCufxhz3bm3ZJNelEe0">未登录</span>
+  </div>
+
+  <div class="row" data-page-node-id="gTKsAVMhmao8a2DmSnfCfH">
+    <input type="text" id="prompt" value="请写一篇800字的作文，题目我的家乡，要求分段落，内容详细" data-page-node-id="DwcciT6V8zdjd79kdXdIiq">
+    <button id="btnStart" disabled data-page-node-id="7W6yHB8ECzKXlTniMvdYpr">2. 开始生成</button>
+    <button id="btnCut" disabled data-page-node-id="NREX7Bo8OwJ28hqbyIIxJB">3. 模拟断网</button>
+    <button id="btnResume" disabled data-page-node-id="XnVUehYaqYU7DoFEmcP8pb">4. 断点续传</button>
+    <button id="btnClear" data-page-node-id="RDUfOovETsGIxX1FmmNBnN">清空</button>
+  </div>
+
+  <div class="row hint" data-page-node-id="uduuf6BmZZ1Vaa4GDvXO2M">
+    为什么要自己写解析：EventSource 不能自定义请求头 → 带不了 Authorization。
+    fetch 能带 header，但 SSE 的帧解析、断线重连、按 id 去重都得自己来。
+  </div>
+
+  <pre id="output" data-page-node-id="sPpHDaFCcWQ1317le19ihy"></pre>
+
+<script>
+const API = "http://127.0.0.1:8000";   // 换成你 uvicorn 的端口
+
+let token = null;
+let streamId = null;        // 一次生成的身份：重连时必须用同一个
+let lastEventId = 0;        // 已收到的最大 id：重连时放进 Last-Event-ID 头
+let controller = null;      // AbortController：模拟断网 = controller.abort()
+let seen = new Set();       // 客户端去重（服务端补发可能重发）
+
+const $ = (id) => document.getElementById(id);
+const out = $("output");
+const status = $("status");
+
+function append(text) {
+  out.textContent += text;
+  out.scrollTop = out.scrollHeight;
+}
+
+// ---------- 1. 登录 ----------
+async function login() {
+  const resp = await fetch(`${API}/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: $("user").value, password: $("pass").value }),
+  });
+  if (!resp.ok) { status.textContent = `登录失败 HTTP ${resp.status}`; return; }
+  const data = await resp.json();
+  token = data.access_token;
+  status.textContent = `已登录，token 长度 ${token.length}`;
+  $("btnStart").disabled = false;
+}
+
+// ---------- 2. 核心：fetch + ReadableStream 手写 SSE ----------
+async function connect({ resume = false } = {}) {
+  const headers = { "Authorization": `Bearer ${token}` };
+  if (resume) {
+    // 这一步是断点续传的关键。浏览器 EventSource 自动带它，手写 fetch 必须自己带。
+    headers["Last-Event-ID"] = String(lastEventId);
+  }
+
+  const url = `${API}/llm/chat`
+    + `?prompt=${encodeURIComponent($("prompt").value)}`
+    + `&stream_id=${streamId}`;
+
+  controller = new AbortController();
+  status.textContent = resume ? `续传中（从 id=${lastEventId} 之后接着收）` : "生成中…";
+
+  let resp;
+  try {
+    resp = await fetch(url, { headers, signal: controller.signal });
+  } catch (e) {
+    status.textContent = `连接失败：${e}`;
+    return;
+  }
+  if (!resp.ok) { status.textContent = `HTTP ${resp.status}：${await resp.text()}`; return; }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+
+      // SSE 以「空行」分帧。注意先切帧再解析，否则会解析到半截帧。
+      let cut;
+      while ((cut = buf.indexOf("\n\n")) >= 0) {
+        const frame = buf.slice(0, cut);
+        buf = buf.slice(cut + 2);
+        handleFrame(frame);
+      }
+    }
+  } catch (e) {
+    if (e.name === "AbortError") {
+      status.textContent = `已断网，最后收到 id=${lastEventId}。点『断点续传』继续。`;
+      return;
+    }
+    throw e;
+  }
+  status.textContent = `完成，最后一帧 id=${lastEventId}`;
+}
+
+// ---------- 3. 单帧解析：id / event / data ----------
+function handleFrame(frame) {
+  let id = null, event = "message", dataLines = [];
+  for (const line of frame.split("\n")) {
+    if (line.startsWith("id:"))         id = parseInt(line.slice(3).trim(), 10);
+    else if (line.startsWith("event:")) event = line.slice(6).trim();
+    else if (line.startsWith("data:"))  dataLines.push(line.slice(5).replace(/^ /, ""));
+  }
+
+  if (event === "end") { append("\n[done]"); return; }
+
+  if (id !== null) {
+    // 服务端按 Last-Event-ID 补发时可能重发已经收到的帧（它不知道你手里有什么），
+    // 去重是客户端的责任：id 已经见过就丢掉。
+    if (seen.has(id)) return;
+    seen.add(id);
+    lastEventId = Math.max(lastEventId, id);
+  }
+  append(dataLines.join("\n"));
+}
+
+// ---------- 按钮绑定 ----------
+$("btnLogin").onclick = login;
+
+$("btnStart").onclick = () => {
+  out.textContent = "";
+  seen = new Set();
+  lastEventId = 0;
+  streamId = crypto.randomUUID().slice(0, 8);   // 每次新生成 = 新会话
+  $("btnCut").disabled = false;
+  $("btnResume").disabled = true;
+  connect({ resume: false });
+};
+
+$("btnCut").onclick = () => {
+  controller.abort();                           // 模拟用户断网
+  $("btnResume").disabled = false;
+};
+
+$("btnResume").onclick = () => {
+  $("btnResume").disabled = true;
+  connect({ resume: true });                    // 同一个 stream_id + Last-Event-ID
+};
+
+$("btnClear").onclick = () => { out.textContent = ""; };
+</script>
+</body>
+</html>
