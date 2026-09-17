@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Query, Depends, Path, HTTPException
+from fastapi import APIRouter, Query, Depends, Path, HTTPException,Request
 from typing import Optional
 from pydantic import BaseModel, Field
+from routers.auth import get_current_admin
+from routers.limits import limiter
 
 router = APIRouter()
 fake_items_db = {
@@ -13,7 +15,9 @@ def common_params(skip: int = 0, limit: int = 100):
 
 
 @router.get("/items/")
+@limiter.limit("5/minute")
 def read_items(
+    request: Request,
     q: Optional[str] = Query(None, max_length=50, description="按名称模糊搜索"),
     commons: dict = Depends(common_params),
 ):
@@ -54,3 +58,13 @@ def create_item(item: Item):
     new_id = max(fake_items_db.keys()) + 1
     fake_items_db[new_id] = {"item_id": new_id, **item.model_dump()}
     return fake_items_db[new_id]
+
+@router.delete('/items/{item_id}')
+def delete_item(
+        item_id: int = Path(...,gt=0, description="商品ID"),
+        admin: dict = Depends(get_current_admin)
+):
+    if item_id not in fake_items_db:
+        raise HTTPException(status_code=404, detail="商品不存在")
+    removed = fake_items_db.pop(item_id)
+    return {"msg": "已删除", "item": removed}
