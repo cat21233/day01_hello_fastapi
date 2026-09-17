@@ -23,3 +23,12 @@ Thumbs.db
 # 日志与临时文件
 *.log
 *.tmp
+
+# 模型权重与缓存（92MB！永远不要提交，别人 clone 后自己下载）
+models/
+.model_cache/
+
+# 测试与覆盖率产物
+.coverage
+htmlcov/
+coverage.xml
