@@ -10,9 +10,9 @@ def test_read_items():
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 def test_read_item_exists():
-    response = client.get("/items/1")
+    response = client.get("/items/3")
     assert response.status_code == 200
-    assert response.json()["item_id"] == 1
+    assert response.json()["item_id"] == 3
 
 def test_read_items_not_found():
     response = client.get('/items/999')
