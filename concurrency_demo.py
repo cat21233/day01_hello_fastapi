@@ -28,5 +28,5 @@ async def main():
         print(f"block 并发 2 个总耗时: {time.time()-t0:.2f}s")
         for r in results:
             print(f"  单次: {r[0]:.2f}s  返回: {r[1]}")
-
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
