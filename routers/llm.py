@@ -54,7 +54,9 @@ async def _produce(stream_id: str, prompt: str) -> None:
                 st.chunks.append(delta)
                 st.changed.set()
         finally:
-            await gen.aclose()                   # 正常/异常都要关掉上游，别让连接挂着
+            await gen.aclose()  # 正常/异常都要关掉上游，别让连接挂着
+    except StopAsyncIteration:
+        pass
     except TimeoutError:
         st.chunks.append("上游接口响应超时,请稍后重试")
     except Exception as exc:
