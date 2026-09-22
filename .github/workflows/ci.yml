@@ -1,0 +1,64 @@
+# ============================================================
+# CI 工作流：每次 push / PR 到 main、dev 时自动跑测试
+#
+# 设计原则：
+#   1. 不依赖 Docker —— 用 actions/setup-python 直接装依赖跑 pytest，
+#      容器化是后续加的 job，不是前提。
+#   2. 不注入任何密钥 —— 本项目的测试全部 mock，零真实 API 调用。
+#      一旦以后某个测试需要真实调用，才在这里加 Secrets。
+#   3. 用 pytest 的默认收集范围（由 pyproject.toml 的 testpaths 约束），
+#      不写 `pytest tests/`，让本地与 CI 行为严格一致。
+# ============================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  test:
+    name: pytest (Python 3.12)
+    runs-on: ubuntu-latest
+
+    steps:
+      # --- 1. 取代码 ---
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # --- 2. 装 Python ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"        # 与本地 .venv 的 3.12 对齐
+
+      # --- 3. 装依赖 ---
+      # 顺序有讲究：先生产依赖（被测对象），再开发依赖（测试工具）
+      - name: Install production dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      # --- 4. 跑测试 + 覆盖率 ---
+      # 这里写裸 `pytest`：收集范围由 pyproject.toml 的 testpaths 决定。
+      # 若本地与 CI 有任何不一致，这一步会立刻暴露。
+      #
+      # 注意：本地（Windows）覆盖率的路径分隔符是 `\`，Linux runner 上是 `/`。
+      #      目前只打印到终端，无影响；若以后接入 Codecov 等做跨平台对比，
+      #      需加 `--cov-report=xml` 并在服务端做路径规范化。
+      - name: Run tests with coverage
+        run: pytest --cov --cov-report=term-missing
+
+      # --- 5. 覆盖率报告归档（无论成败都上传，失败时才有东西可查） ---
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: .coverage
+          if-no-files-found: ignore

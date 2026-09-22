@@ -1,0 +1,48 @@
+# ============================================================
+# 项目工具配置（pytest / coverage）
+#
+# 说明：本文件当前只承载「工具配置」，不含打包元数据（name/version/
+#       dependencies）。等真正需要发布成包时再补 [project] 段。
+# ============================================================
+
+[tool.pytest.ini_options]
+# ⚠️ 关键配置：不加这行时，`pytest` 会从项目根开始【按文件名】递归扫描
+#    test_*.py —— 扫到 study_day_learns/day-026/collect_demo/test_oops.py
+#    这类「故意制造收集期崩溃」的实验样本，会导致整个 session 中断
+#    （Interrupted），所有测试一个都不跑。
+#    配上 testpaths 后，裸跑 `pytest` 也只扫 tests/，行为与 CI 完全一致。
+testpaths = ["tests"]
+
+# 默认安静模式：只输出结果，不刷屏
+addopts = "-q"
+
+# 异步测试模式：auto 让 pytest-asyncio 自动接管 async def 测试函数，
+# 不必每个都加 @pytest.mark.asyncio
+asyncio_mode = "auto"
+
+
+[tool.coverage.run]
+# 统计哪些文件的覆盖率
+source = ["."]
+
+# 排除不参与统计的文件/目录
+omit = [
+    "tests/*",                # 测试代码本身不计覆盖率
+    "study_day_learns/*",     # 学习探针脚本，非生产代码
+    ".venv/*",
+    ".model_cache/*",
+]
+
+
+[tool.coverage.report]
+# 报告里隐藏「已 100% 覆盖」的文件，只显示有遗漏的
+skip_covered = true
+
+# 对以下行不计入遗漏：
+#   pragma: no cover  —— 显式标注跳过
+#   if __name__ == ...  —— 入口守卫，CI 里不会执行
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+]
