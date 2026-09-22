@@ -4,8 +4,13 @@
 # 设计原则：
 #   1. 不依赖 Docker —— 用 actions/setup-python 直接装依赖跑 pytest，
 #      容器化是后续加的 job，不是前提。
-#   2. 不注入任何密钥 —— 本项目的测试全部 mock，零真实 API 调用。
-#      一旦以后某个测试需要真实调用，才在这里加 Secrets。
+#   2. 本项目的测试全部 mock，零真实 API 调用 → 不需要真实密钥。
+#      但代码在 import 期就会读配置（llm_service/factory.py 按 api_key
+#      是否为空来过滤可用厂商），配置为空会直接抛 ValueError，
+#      导致测试文件在【收集期】就 ERROR。故此处塞入哑值（dummy），
+#      让「有哪些厂商可用」这个判断能通过。
+#      ⚠️ 哑值不是秘密，放 Secrets 反而是概念污染。
+#      ⚠️ 这是止血方案；治本方案是让 LLMClient 惰性初始化（见项目欠账）。
 #   3. 用 pytest 的默认收集范围（由 pyproject.toml 的 testpaths 约束），
 #      不写 `pytest tests/`，让本地与 CI 行为严格一致。
 # ============================================================
@@ -22,6 +27,14 @@ jobs:
   test:
     name: pytest (Python 3.12)
     runs-on: ubuntu-latest
+
+    # 哑环境变量：只为让 import 期不炸，测试不会真发请求。
+    # LLM_PROVIDER 不用给 —— config.py 里默认值就是 "deepseek"。
+    # 值必须是【非空字符串】：空字符串会被 factory.py 的过滤规则剔除。
+    env:
+      DEEPSEEK_API_KEY: dummy-key-for-ci
+      DEEPSEEK_BASE_URL: https://api.deepseek.com
+      DEEPSEEK_MODEL: deepseek-chat
 
     steps:
       # --- 1. 取代码 ---
