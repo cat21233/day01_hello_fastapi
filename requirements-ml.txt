@@ -1,0 +1,15 @@
+# ============================================================
+# ML 可选依赖 —— 只有跑「本地 embedding（BGE）」实验才需要
+#
+# ⚠️ 不要装进生产镜像：torch 单独就 2GB+，镜像会从 ~200MB 涨到 3GB+
+# ⚠️ 生产代码（main.py / routers / common / llm_service）零 import；
+#     只服务 study_day_learns/ 下的实验脚本。
+#
+# 安装：pip install -r requirements-ml.txt
+# ============================================================
+
+sentence-transformers==6.0.1
+torch==2.14.0
+transformers==5.16.1
+scikit-learn==1.9.0
+numpy==2.5.2

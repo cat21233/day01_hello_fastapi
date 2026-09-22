@@ -1,0 +1,25 @@
+# ============================================================
+# 生产运行依赖 —— Docker 镜像只装这一份
+#
+# 生成依据：扫描项目源码的真实 import（非 pip freeze 全量）
+# 原则：只列「直接依赖」；传递依赖（starlette / httpcore / anyio ...）
+#       交给 pip 自己解析，写死反而会锁住升级路径。
+# ============================================================
+
+# --- Web 框架与配置 ---
+fastapi==0.141.1
+uvicorn[standard]==0.52.3
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-dotenv==1.2.2
+
+# --- 认证 / 限流 ---
+python-jose[cryptography]==3.5.0
+passlib==1.7.4
+bcrypt==4.0.1            # ⚠️ 必须钉死 4.0.1：passlib 1.7.4 与 bcrypt>=4.1 不兼容
+slowapi==0.1.10
+
+# --- LLM 调用 ---
+openai==3.5.0
+httpx==0.28.1
+tenacity==9.1.4
