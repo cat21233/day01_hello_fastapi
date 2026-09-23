@@ -13,13 +13,13 @@ from config import settings
 
 # 厂商名 → (api_key, base_url) 的映射表。
 # 加一家新厂商 = 在这里加一行，其余代码零改动。
-_PROVIDERS: dict[str, tuple[str, str]] = {
-    "agnes": (settings.agnes_api_key, settings.agnes_base_url),
-    "deepseek": (settings.deepseek_api_key, settings.deepseek_base_url),
-    "zhipu": (settings.zhipu_api_key,settings.zhipu_base_url)
-}
-_PROVIDERS = {k: v for k, v in _PROVIDERS.items() if v[0].strip()}
-
+def _providers() -> dict[str,tuple[str,str]] :
+    table:dict[str,tuple[str,str]] = {
+        "agnes": (settings.agnes_api_key,settings.agnes_base_url),
+        "deepseek": (settings.deepseek_api_key, settings.deepseek_base_url),
+        "zhipu":(settings.zhipu_api_key,settings.zhipu_base_url)
+    }
+    return {k: v for k,v in table.items() if v[0].strip()}
 # 客户端缓存：{(provider, api_key): client}
 _cache: dict[tuple[str, str], AsyncOpenAI] = {}
 
@@ -29,12 +29,13 @@ def get_client(provider: str = "deepseek") -> AsyncOpenAI:
 
     provider 不认识时抛 ValueError 并列出可用项 —— 快速失败优于静默用错厂商。
     """
-    if provider not in _PROVIDERS:
+    providers = _providers()
+    if provider not in providers:
         raise ValueError(
-            f"未知厂商：{provider!r}，可用：{list(_PROVIDERS.keys())}"
+            f"未知厂商：{provider!r}，可用：{list(providers.keys())}"
         )
 
-    api_key, base_url = _PROVIDERS[provider]
+    api_key, base_url = providers[provider]
     cache_key = (provider, api_key)
 
     if cache_key not in _cache:

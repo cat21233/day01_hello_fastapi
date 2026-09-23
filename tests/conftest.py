@@ -9,3 +9,10 @@ def disable_rate_limiting():
     limiter.enabled = False
     yield
     limiter.enabled = True
+@pytest.fixture(autouse=True)
+def stub_llm_config(monkeypatch):
+    from config import settings
+    import llm_service.factory as factory
+
+    monkeypatch.setattr(settings,"deepseek_api_key","test-key")
+    monkeypatch.setattr(factory,"_cache",{})

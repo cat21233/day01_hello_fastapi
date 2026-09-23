@@ -24,8 +24,16 @@ class LLMClient:
         self.provider = provider
         self.temperature = temperature
         # client 从工厂拿（复用连接池）；存为实例属性方便调用
-        self._client = get_client(provider)
+        self.client = None
         self._model = get_model(provider)
+
+    @property
+    def _client(self):
+        if self.client is None:
+            self.client = get_client(self.provider)
+        return self.client
+
+
 
     @retry(
         wait=wait_exponential(multiplier=1, min=1, max=10),
