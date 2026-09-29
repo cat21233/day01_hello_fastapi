@@ -1,0 +1,54 @@
+# ============================================================
+# .dockerignore —— 构建上下文的排除清单
+#
+# 作用有两个，第二个更要命：
+#   1. 体积：docker build 会把「整个上下文目录」打包发给 daemon，然后才轮到忽略。
+#      .venv 几百 MB + models 92MB 不排掉，每次 build 都白传一遍。
+#   2. 安全：.env 里躺着 API key。虽然本 Dockerfile 的 COPY 都是显式路径、
+#      不会误带它，但万一以后有人改成 `COPY . .`，这份清单就是最后一道闸。
+# ============================================================
+
+# --- 密钥（第一优先级）---
+.env
+.env.*
+
+# --- 虚拟环境（几百 MB；而且是 Windows 版，进 Linux 镜像也没用）---
+.venv/
+venv/
+env/
+
+# --- 版本控制 / IDE ---
+.git/
+.gitignore
+.idea/
+.vscode/
+
+# --- Python 缓存与测试产物 ---
+# ⚠️ 必须带 `**/`：Docker 的 .dockerignore 里 `*` 不跨 `/`，
+#    写成 `__pycache__/` 只匹配根目录那一层，子目录里的照样会被 COPY 进镜像。
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --- 本地模型权重与缓存（92MB；生产代码零 ml 依赖）---
+models/
+.model_cache/
+
+# --- 学习归档 / 文档 / 探针脚本（不进生产镜像）---
+study_day_learns/
+docs/
+README.md
+*_demo.py
+
+# --- 前端演示页（浏览器直接打开本地文件即可，不需要进镜像）---
+static/
+
+# --- 杂项 ---
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
