@@ -31,6 +31,9 @@ omit = [
     "study_day_learns/*",     # 学习探针脚本，非生产代码
     ".venv/*",
     ".model_cache/*",
+    "_lifespan_demo.py",
+    "concurrency_demo.py",
+
 ]
 
 
