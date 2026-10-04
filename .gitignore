@@ -33,5 +33,8 @@ models/
 htmlcov/
 coverage.xml
 
+# 学习探针（一次性实验脚本，结论已落进笔记，不进版本库）
+llm_service/_probe_*.py
+
 # WorkBuddy 会话数据（学习探针 / 打卡工具 / 临时实验，不进版本库）
 .workbuddy/
