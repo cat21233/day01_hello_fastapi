@@ -36,5 +36,10 @@ coverage.xml
 # 学习探针（一次性实验脚本，结论已落进笔记，不进版本库）
 llm_service/_probe_*.py
 
+# 向量数据（运行产物，1.2MB 且每次重算内容会变，进库会永久留在 Git 历史里）
+# 复现命令：python -m llm_service._probe_split
+study_day_learns/**/*embeddings*.json
+study_day_learns/**/*.npy
+
 # WorkBuddy 会话数据（学习探针 / 打卡工具 / 临时实验，不进版本库）
 .workbuddy/
