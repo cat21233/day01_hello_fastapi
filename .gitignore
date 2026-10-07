@@ -43,3 +43,4 @@ study_day_learns/**/*.npy
 
 # WorkBuddy 会话数据（学习探针 / 打卡工具 / 临时实验，不进版本库）
 .workbuddy/
+.chroma_probe/
