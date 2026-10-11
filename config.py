@@ -21,9 +21,14 @@ class Settings(BaseSettings):
     zhipu_model: str = "glm-4.7-flash"
     # 当前默认厂商：LLMClient 用哪家由这里决定，换厂商只改 .env，不动代码。
     # （agnes 免费额度容易打满，429 时切 deepseek 即可）
+    # ── RAG 存储 ──────────────────────────────
+    # 路径都是「相对项目根目录」，rag_store.py 里拼 ROOT 后使用。
+    # 放在 config 里是为了容器部署时能换（t-032 的 Dockerfile 里挂载点不同）。
+    chroma_dir: str = ".chroma_probe"
+    rag_collection: str = "day020"
+    rag_vec_file: str = "study_day_learns/day-020/split_embeddings.json"
+
     llm_provider: str = "deepseek"
-
-
 
     # .env 路径固定为 config.py 同级（项目根），不再依赖 cwd。
     # 修前：env_file=".env"（cwd 相对，PyCharm 跑脚本 cwd=脚本目录→找不到）

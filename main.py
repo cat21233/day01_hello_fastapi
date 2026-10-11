@@ -23,7 +23,9 @@ from routers.external import router as external_router
 from routers.auth import router as auth_router
 from routers.llm import router as llm_router
 from routers.prompts import router as prompts_router
+from routers.rag import router as rag_router
 from common.logger import log_request
+
 
 # 应用启动时刻，用来算 uptime（/health 用）
 START_TIME = time.time()
@@ -64,6 +66,8 @@ app.include_router(external_router)
 app.include_router(auth_router)
 app.include_router(llm_router)
 app.include_router(prompts_router)
+app.include_router(rag_router)
+
 
 # ============ D4：全局中间件 — 记录请求处理耗时 ============
 # 中间件对所有请求生效：进站记时 → 放行路由 → 出站把耗时贴到响应头 + 写结构化日志
