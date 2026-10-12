@@ -9,10 +9,15 @@ rag_store.py —— 将来换向量库，这个文件一行不用改。
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from llm_service.rag_store import ingest, search
+from common.sse import sse_response
+from config import settings
+from llm_service import LLMClient
+from llm_service.rag_store import build_context, ingest, search
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
+# 模块级建一次 —— 和 routers/llm.py 第 16 行同一个做法
+llm = LLMClient(settings.llm_provider)
 
 class IngestIn(BaseModel):
     paths: list[str] = Field(
@@ -69,3 +74,29 @@ def rag_query(body: QueryIn) -> QueryOut:
         )
     ]
     return QueryOut(query=body.query, hits=hits)
+
+# ⚠️ 故意用 def —— 里面的 search() 是 CPU 阻塞调用（首次 9.7 秒）。
+#    写成 async def 会焊住事件循环，同期所有请求都进不来。
+#    那怎么还能流式？用 stream_response 里那层「同步转异步」的包装（见下）。
+@router.post("/query/stream")
+def rag_query_stream(body: QueryIn):
+    where = None
+    if body.source:
+        where = {"source": {"$eq": body.source.replace("/", "\\")}}
+
+    raw = search(body.query, n=body.n, where=where)
+    hits = [
+        Hit(source=m["source"], score=round(1 - d, 4), text=t).model_dump()
+        for m, d, t in zip(
+            raw["metadatas"][0], raw["distances"][0], raw["documents"][0]
+        )
+    ]
+
+    async def _gen():
+        context = build_context(hits)
+        system = "你是代码助手。只根据下面的资料回答，资料里没有的就说不知道，不要编造。"
+        prompt = f"资料：\n{context}\n\n问题：{body.query}"
+        async for delta in llm.stream(prompt, system=system):
+            yield delta
+
+    return sse_response(_gen(), end_event="end", end_data="done")

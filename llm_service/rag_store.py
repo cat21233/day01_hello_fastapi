@@ -97,3 +97,18 @@ def search(query: str, n: int = 3, collection: str | None = None, where: dict | 
     return get_collection(collection).query(
         query_embeddings=qe, n_results=n, where=where
     )
+def build_context(hits: list[dict], max_chars: int = 2000) -> str:
+    """把命中块拼成给 LLM 的参考资料。
+
+    用 \n\n 分段（和分块器第一刀同一个字符 —— 切的时候按段落切，
+    拼回去也按段落拼）。max_chars 兜底：代码块很长时别把 prompt 撑爆。
+    """
+    parts = []
+    used = 0
+    for h in hits:
+        text = h["text"]
+        if used + len(text) > max_chars:
+            break
+        parts.append(text)
+        used += len(text)
+    return "\n\n".join(parts)
