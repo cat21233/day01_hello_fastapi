@@ -97,6 +97,8 @@ def search(query: str, n: int = 3, collection: str | None = None, where: dict | 
     return get_collection(collection).query(
         query_embeddings=qe, n_results=n, where=where
     )
+
+
 def build_context(hits: list[dict], max_chars: int = 2000) -> str:
     """把命中块拼成给 LLM 的参考资料。
 

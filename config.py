@@ -2,6 +2,8 @@ from pathlib import Path
 
 import openai
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
 class ConfigError(Exception):
     """配置不完整/不合法时抛出。启动即失败（fail-fast），别等跑起来才炸。"""
 
