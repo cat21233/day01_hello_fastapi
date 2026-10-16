@@ -1,0 +1,20 @@
+{"id": "q01", "query": "怎么校验 JWT 令牌？", "expected_sources": ["routers/auth.py"], "difficulty": "easy", "why": "「JWT」在 auth.py 注释里原样出现（「JWT 认证核心」），送分题"}
+{"id": "q02", "query": "哪个接口可以按名称模糊搜索商品？", "expected_sources": ["routers/items.py"], "difficulty": "medium", "why": "「模糊搜索」要映射到代码里的 q: Optional[str] = Query(None, max_length=50)，多一层词汇转换"}
+{"id": "q03", "query": "服务端转发第三方 API 请求的代码在哪？", "expected_sources": ["routers/external.py"], "difficulty": "hard", "why": "目标文件只有 3 块，注释里也从没出现「转发」「第三方」，靠 httpx 语义兜底，测检索下限"}
+{"id": "q04", "query": "商品ID传0会发生什么？", "expected_sources": ["routers/items.py"], "difficulty": "medium", "why": "约束在 items.py 的 Path(..., gt=0) 上，但注释只写「必须大于0」没写后果，FastAPI 校验失败会抛 422"}
+{"id": "q05", "query": "怎么防止接口被人恶意刷？", "expected_sources": ["routers/limits.py"], "difficulty": "hard", "why": "limits.py 全库只有 1 块且一行注释都没有，「防刷」这个词完全没出现，只能靠 Limiter/get_remote_address 的纯代码语义命中"}
+{"id": "q06", "query": "断线重连会重复扣费吗？", "expected_sources": ["routers/llm.py"], "difficulty": "easy", "why": "docstring 原样写着「错过的那段直接读缓存补发，不重跑模型、不重复扣费」"}
+{"id": "q07", "query": "怎么让返回内容一个字一个字往外冒？", "expected_sources": ["routers/stream.py"], "difficulty": "medium", "why": "对应 stream.py 的「公开 SSE demo 1：逐字符问候」，「一个字一个字」要转换到「逐字符」"}
+{"id": "q08", "query": "用户地址这种嵌套字段怎么定义？", "expected_sources": ["routers/users.py"], "difficulty": "easy", "why": "users.py 注释原样写着 address: Address # 嵌套：必须是一个符合 Address 结构的对象"}
+{"id": "q09", "query": "换一套 prompt 要改代码吗？", "expected_sources": ["routers/prompts.py"], "difficulty": "easy", "why": "prompts.py 模块 docstring 原样写着「这样改 prompt 不用动代码、不用翻源码」"}
+{"id": "q10", "query": "为什么Swagger能直接填token登录？", "expected_sources": ["routers/auth.py"], "difficulty": "easy", "why": "auth.py 注释专门有一节「为什么用 HTTPBearer 而不是 OAuth2PasswordBearer」，原样提到 Swagger 和「填 token」"}
+{"id": "q11", "query": "同一个IP一直刷新会被拦吗？", "expected_sources": ["routers/limits.py"], "difficulty": "hard", "why": "limits.py 全库只有 1 块（Limiter+get_remote_address），注释里「IP」「拦」「刷」一个词都没有，排除掉 auth/llm 那些有注释的大文件，只能靠纯代码语义命中"}
+{"id": "q12", "query": "打字机效果是怎么实现的？", "expected_sources": ["routers/stream.py"], "difficulty": "hard", "why": "stream.py 有 14 块但都埋在 SSE 事件生成逻辑里，注释只写「逐字符」「流式」，没有「打字机」这个词；排除 prompts.py（它管发什么内容，不管怎么发）"}
+{"id": "q13", "query": "管理员和普通用户的权限怎么区分？", "expected_sources": ["routers/auth.py"], "difficulty": "medium", "why": "「权限」在 auth.py 里对应 role 字段 + get_current_admin（79行判断 role != admin），users.py 只讲字段结构没有权限判断，所以排除 users.py"}
+{"id": "q14", "query": "删除商品需要什么权限？", "expected_sources": ["routers/items.py"], "difficulty": "easy", "why": "items.py 删除接口直接挂 Depends(get_current_admin)，注释原样出现「管理员」，问句里的词和语料对得上"}
+{"id": "q15", "query": "怎么让程序去别人的网站上取数据？", "expected_sources": ["routers/external.py"], "difficulty": "hard", "why": "external.py 只有 3 块，注释里没有「别人的网站」「取数据」，靠 httpx.AsyncClient 的代码语义兜底；这条和 q03 都指向唯一的小文件，是测下限的主考点"}
+{"id": "q16", "query": "哪些字段可以不传？", "expected_sources": ["routers/users.py"], "difficulty": "easy", "why": "users.py 注释原样写着「可选字段，不传则为 None」（age: Optional[int] = None），问句里的词和语料基本对得上"}
+{"id": "q17", "query": "接口地址后面那个商品编号能乱填吗？", "expected_sources": ["routers/items.py"], "difficulty": "medium", "why": "users.py 只讲字段结构没有路径校验，真正卡编号的是 items.py 的 Path(..., gt=0)；「编号」要转到「路径参数」这层说法"}
+{"id": "q18", "query": "切换模型厂商要改很多地方吗？", "expected_sources": ["routers/llm.py"], "difficulty": "hard", "why": "llm.py 注释写的是「换厂商不用动这个文件」「厂商名/ base_url / model 全藏进 LLMClient」，原句没有「很多地方」这种问法；而且 candidates 里 llm_service/factory.py 不在库里，容易分散命中"}
+{"id": "q19", "query": "登录成功后拿到的凭证能用多久？", "expected_sources": ["routers/auth.py"], "difficulty": "hard", "why": "「凭证」要跨到 access token，有效期常量 ACCESS_TOKEN_EXPIRE_MINUTES=30 藏在 auth.py 代码里、没有任何中文注释解释它，属于纯代码语义"}
+{"id": "q20", "query": "长期不用重新登录是怎么做到的？", "expected_sources": ["routers/auth.py"], "difficulty": "hard", "why": "refresh token 在 auth.py 只有 REFRESH_TOKEN_EXPIRE_MINUTES = 60*24*7 一行常量加 7 天注释，没有「重新登录」这类词；这条故意测「注释极少的正确块还能不能被捞出来」"}
