@@ -36,6 +36,20 @@ coverage.xml
 # 学习探针（一次性实验脚本，结论已落进笔记，不进版本库）
 llm_service/_probe_*.py
 
+# 本地安装 / venv 修复残留（一次性产物，不进版本库）
+.wheelhouse/
+_venv_inventory*.txt
+pip-unpack-*/
+pip-metadata-*/
+.pip-tmp*/
+_tmp_*.py
+
+# 本地数据库文件（SQLite 运行产物，真实业务数据不进版本库）
+app.db
+app.db-journal
+app.db-wal
+app.db-shm
+
 # 向量数据（运行产物，1.2MB 且每次重算内容会变，进库会永久留在 Git 历史里）
 # 复现命令：python -m llm_service._probe_split
 study_day_learns/**/*embeddings*.json

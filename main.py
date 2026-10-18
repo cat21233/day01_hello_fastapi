@@ -15,6 +15,7 @@ from slowapi.errors import RateLimitExceeded
 from routers.limits import limiter
 from fastapi import FastAPI, Request
 from config import settings, validate_settings
+from db import DEFAULT_USERS, init_db, seed_default_users
 from fastapi.middleware.cors import CORSMiddleware
 from routers.items import router as items_router
 from routers.users import router as users_router
@@ -24,7 +25,7 @@ from routers.auth import router as auth_router
 from routers.llm import router as llm_router
 from routers.prompts import router as prompts_router
 from routers.rag import router as rag_router
-from common.logger import log_request
+from common.logger import log_event, log_request
 
 
 # 应用启动时刻，用来算 uptime（/health 用）
@@ -37,6 +38,16 @@ START_TIME = time.time()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     validate_settings()
+
+    # ============ 接入真实数据库：启动时建表 + 种账号 ============
+    # init_db() 遍历 Base.metadata 注册表，只建「还不存在」的表 —— 幂等，重启不会报错。
+    # 一旦这里连不上库（密码错 / 库不存在 / MySQL 没启动），启动就直接失败，
+    # 而不是等第一个登录请求才 500。这就是 fail-fast 的价值。
+    init_db()
+    log_event("db_init", driver=settings.database_url.split("://")[0])
+    if settings.db_auto_seed:
+        created = seed_default_users()
+        log_event("db_seed", inserted=created, total=len(DEFAULT_USERS))
     yield
 
 

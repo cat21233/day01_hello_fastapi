@@ -56,6 +56,16 @@ def log_request(
     _logger.info(json.dumps(record, ensure_ascii=False))
 
 
+def log_event(event: str, **fields) -> None:
+    """记一条自定义结构化事件（启动建表、种子数据、迁移结果等）。
+
+    为什么留这么个通用口子：事件类型会一直长（db_init / db_seed / ...），
+    每加一种就写一个函数太啰嗦，统一成 event + 任意字段即可。
+    """
+    record = {"event": event, **fields}
+    _logger.info(json.dumps(record, ensure_ascii=False))
+
+
 def log_llm(
     *,
     provider: str,

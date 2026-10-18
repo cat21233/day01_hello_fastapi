@@ -30,6 +30,18 @@ class Settings(BaseSettings):
     rag_collection: str = "day020"
     rag_vec_file: str = "study_day_learns/day-020/split_embeddings.json"
 
+    # ── 关系数据库（业务数据）──────────────────────
+    # 换库只改 .env 的 DATABASE_URL，代码一个字不动。
+    # 本地开发：SQLite 文件（零配置，文件就落在项目根）
+    # 真实数据库（本机 phpstudy MySQL）：
+    #   DATABASE_URL=mysql+pymysql://root:密码@127.0.0.1:3306/day01?charset=utf8mb4
+    # 注意 charset=utf8mb4：utf8 在 MySQL 里只有 3 字节，存 emoji 会直接报错
+    database_url: str = "sqlite:///./app.db"
+    # 调试用：把每条 SQL 打到控制台（.env 里 DATABASE_ECHO=true 打开）
+    database_echo: bool = False
+    # 启动时是否自动插入演示账号（生产环境务必 false）
+    db_auto_seed: bool = True
+
     llm_provider: str = "deepseek"
 
     # .env 路径固定为 config.py 同级（项目根），不再依赖 cwd。
