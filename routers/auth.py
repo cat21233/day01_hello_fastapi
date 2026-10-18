@@ -1,3 +1,16 @@
+"""登录认证与权限控制：签发和校验 JWT 令牌。
+
+用户登录换取访问凭证（access token，30 分钟过期）；想长期不用重新登录，
+用 refresh token（7 天）换新凭证。管理员与普通用户靠 role 字段区分。
+Swagger 能直接填 token 调试，是因为用了 HTTPBearer 而不是 OAuth2PasswordBearer。
+"""
+
+"""登录认证与权限控制：签发和校验 JWT 令牌。
+
+用户登录换取访问凭证（access token，30 分钟过期）；想长期不用重新登录，
+用 refresh token（7 天）换新凭证。管理员与普通用户靠 role 字段区分。
+Swagger 能直接填 token 调试，是因为用了 HTTPBearer 而不是 OAuth2PasswordBearer。
+"""
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError

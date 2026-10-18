@@ -1,3 +1,16 @@
+"""SSE 流式输出：让返回内容一个字一个字往外冒，也就是打字机效果。
+
+普通接口要等全部生成完才一次性返回，用户干等；SSE 分片推送，前端边收边渲染。
+三个接口：/stream/greet 逐字符问候、/stream/counter 带事件 id 支持断线续传、
+/stream/protected 认证 + 限流 + 流式合体。
+"""
+
+"""SSE 流式输出：让返回内容一个字一个字往外冒，也就是打字机效果。
+
+普通接口要等全部生成完才一次性返回，用户干等；SSE 分片推送，前端边收边渲染。
+三个接口：/stream/greet 逐字符问候、/stream/counter 带事件 id 支持断线续传、
+/stream/protected 认证 + 限流 + 流式合体。
+"""
 from fastapi import APIRouter, Query, Request, Depends
 from fastapi.responses import StreamingResponse
 import asyncio
