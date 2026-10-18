@@ -1,18 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta, timezone
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from common.security import pwd
+from db import get_db
+from db_models import User
 from routers.limits import limiter
 
 from pydantic import BaseModel, Field
 
 router = APIRouter()
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
-fake_users_db = {
-    "zihao": {"username": "zihao", "hashed_password": pwd.hash("123456"), "role": "admin"},
-    "test": {"username": 'test', "hashed_password": pwd.hash("123456"), "role": "user"}
-}
 SECRET_KEY = 'my-secret-key-2026'
 ALGORITHM = 'HS256'
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -84,11 +84,21 @@ def get_current_admin(current_user: dict = Depends(get_current_user)):
 
 @router.post("/token")
 @limiter.limit("3/minute")
-def token_login(request: Request, item: LoginRequest):
-    user = fake_users_db.get(item.username)
-    if not user or not pwd.verify(item.password, user["hashed_password"]):
+def token_login(request: Request, item: LoginRequest, db: Session = Depends(get_db)):
+    # ① 按用户名查库。select(...) 是 SQLAlchemy 2.0 写法，
+    #    生成的 SQL 是 SELECT ... FROM users WHERE users.username = %s LIMIT 1
+    #    db.scalar() 取第一列的第一个值（这里是 User 对象或 None）
+    user = db.scalar(select(User).where(User.username == item.username))
+
+    # ② 三种失败合并成同一句错误提示：
+    #    用户不存在 / 密码错 → 都回「用户名或密码错误」，否则等于告诉攻击者「这个用户名存在」，
+    #    下一步就能针对性地爆破了（用户枚举漏洞）。
+    #    is_active=False 的账号也一律拒绝（软禁用，不删数据）。
+    if user is None or not user.is_active or not pwd.verify(item.password, user.hashed_password):
         raise HTTPException(status_code=401, detail='用户名或密码错误')
-    base_payload = {"sub": item.username, "role": user["role"]}
+
+    # ③ 角色也从数据库取：改库里的 role 立刻生效，不用重新发 token 前就生效
+    base_payload = {"sub": user.username, "role": user.role}
     access_token = _create_token({**base_payload, "type": "access"}, ACCESS_TOKEN_EXPIRE_MINUTES)
     refresh_token = _create_token({**base_payload, "type": "refresh"}, REFRESH_TOKEN_EXPIRE_MINUTES)
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
