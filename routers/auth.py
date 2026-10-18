@@ -6,15 +6,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from common.security import pwd
+from config import settings
 from db import get_db
 from db_models import User
 from routers.limits import limiter
 
 from pydantic import BaseModel, Field
 
+# 改后
 router = APIRouter()
-SECRET_KEY = 'my-secret-key-2026'
+
+# 改前：SECRET_KEY = 'my-secret-key-2026'
+#       明文写死 → 已随 commit 0be57b0 进 Git 历史 → 谁 clone 谁能自签 token。
+# 改后：从 .env 读。代码里没有可用兜底值 —— 漏配就启动失败，不会静默用空串。
+SECRET_KEY = settings.jwt_secret_key
 ALGORITHM = 'HS256'
+
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 天
 

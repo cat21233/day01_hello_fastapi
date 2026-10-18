@@ -41,10 +41,17 @@ class Settings(BaseSettings):
     database_echo: bool = False
     # 启动时是否自动插入演示账号（生产环境务必 false）
     db_auto_seed: bool = True
-
+    # 改后
     llm_provider: str = "deepseek"
 
+    # ── JWT 签名密钥（秘密！只能来自 .env）────────────
+    # 这个值是 token 的「印章」：拿到它就能自签任意用户名的 token。
+    # 所以它属于秘密，不属于可调参数 —— 代码里故意不给可用默认值。
+    # 生成方式：python -c "import secrets; print(secrets.token_urlsafe(48))"
+    jwt_secret_key: str = ""
+
     # .env 路径固定为 config.py 同级（项目根），不再依赖 cwd。
+
     # 修前：env_file=".env"（cwd 相对，PyCharm 跑脚本 cwd=脚本目录→找不到）
     # 修后：env_file=<config.py 同级的 .env>（任何 cwd 下都能找到）
     model_config = SettingsConfigDict(
@@ -74,7 +81,18 @@ def validate_settings() -> None:
       2. 至少得有一个厂商配了 key（否则整个 LLM 功能等于废了）
     失败时抛出的 ConfigError 信息要写清楚「缺了什么、怎么补」。
     """
+    # 改后（新增这一段，原有两段检查保持不动）
+    # ① 先查「印章」：它比 API key 更基础，缺了等于谁都能冒充谁。
+    #    阈值 32 不是玄学：太短（如 "123456"）可以被离线暴力枚举出签名。
+    if len(settings.jwt_secret_key.strip()) < 32:
+        raise ConfigError(
+            "JWT_SECRET_KEY 缺失或太短（要求 ≥32 字符）。"
+            '生成一个：python -c "import secrets; print(secrets.token_urlsafe(48))"'
+            "，然后写进项目根的 .env：JWT_SECRET_KEY=<生成的值>"
+        )
+
     providers = configured_providers()
+
     if not providers:
         raise ConfigError("一个厂商都没有配去.env里面补")
 
