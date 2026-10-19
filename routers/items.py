@@ -1,3 +1,9 @@
+"""商品资源的增删查接口。
+
+列表支持 skip/limit 分页，并可按商品名称做模糊搜索；单条查询提供完整视图
+和只暴露部分字段的公开视图两套；新增不设门槛，删除仅管理员可用。
+路径里的商品编号要求是正整数，由 Path 约束校验。
+"""
 from fastapi import APIRouter, Query, Depends, Path, HTTPException,Request
 from typing import Optional
 from pydantic import BaseModel, Field

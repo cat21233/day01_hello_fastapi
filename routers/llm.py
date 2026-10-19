@@ -1,3 +1,11 @@
+"""大模型对话与流式输出：把底层用哪家模型服务商这件事藏起来。
+
+调用方只管提问，不用知道背后是 DeepSeek 还是别家；服务商、地址、模型名
+全收在 LLMClient 里，由配置的 LLM_PROVIDER 决定，换一家只改配置。
+
+流式接口支持断线续传：生成在后台继续跑，客户端凭 last-event-id 回来接着收，
+不会重新请求模型。文末两个慢接口对照同步阻塞与异步切换。
+"""
 from fastapi import APIRouter, Query, Request, Depends
 
 from common.sse import sse_response

@@ -21,7 +21,11 @@ from llm_service import rag_store
 
 client = TestClient(app)
 
-AUTH_BLOCKS = 30        # routers/auth.py 切出 30 块（day-020 分块对照的实测值）
+# routers/auth.py 切出的块数。这是**语料快照**：改了 auth.py 的任何一行
+# （含模块 docstring），chunk_size=200 会整体重排，这个数必须重新量。
+# 量法：python -c "from llm_service import rag_store; ..." 或看 _probe_split 输出。
+# 2026-10-18：补 docstring 后 30 → 37。
+AUTH_BLOCKS = 37
 TMP = "pytest_rag_tmp"
 
 
@@ -86,9 +90,14 @@ AUTH_SRC = r"routers\auth.py"    # 库里 metadata 的真实格式（反斜杠�
 def test_query_shape_and_score():
     """返回结构正确，且 score = 1 - 距离（越大越像）。
 
-    这里卡「精确值」而不是「区间」—— 区间判据抓不住方向写反的错：
-    score=d 时会得到 0.8578，照样落在 [-1,1] 且 >0.1 里，测试假通过。
-    基线来自实测：正确实现首条恰好 0.1422。
+    原来是钉死一个精确值（0.1422），但那是**语料快照**：
+    补一次 docstring 检索结果就整体重排，精确值立刻失效 → 测试变噪音。
+    现改成用「相关问句 vs 无关问句」的**符号关系**来判方向，
+    对语料改动免疫，同时对两种写反都致命：
+
+      score = d      → 无关问句变成正数（实测 +1.368），far < 0 挂
+      score = -d     → 相关问句变成负数（实测 -0.510），near > 0 挂
+      score = 1 - d  → near=0.4897, far=-0.3680，全过 ✅（当前实现）
     """
     resp = client.post("/rag/query", json={"query": "怎么校验 JWT 令牌", "n": 3})
     assert resp.status_code == 200
@@ -102,12 +111,25 @@ def test_query_shape_and_score():
     assert set(hit) == {"source", "score", "text"}
     assert isinstance(hit["score"], float)
     assert hit["text"]                       # 原文非空，拼 prompt 要用
+    assert hit["source"].endswith(".py")     # 来源必须是语料文件，不能是空串/路径串错
 
-    # score = 1 - 距离，范围 [-1, 1]。
+    # 范围 [-1, 1]
     assert -1.0 <= hit["score"] <= 1.0
-    # 钉死实测值：写成 score=d 会变成 1-0.1422=0.8578，这里必挂。
-    assert hit["score"] == pytest.approx(0.1422, abs=1e-3)
-    assert hit["source"] == r"routers\users.py"    # 实测第一名是这个文件（检索质量差，见 t-426）
+
+    scores = [h["score"] for h in body["hits"]]
+
+    # 方向判据：相关问句为正、无关问句为负（不依赖语料，只依赖语义）
+    near = scores[0]
+    far = client.post(
+        "/rag/query", json={"query": "今天重庆天气怎么样", "n": 1}
+    ).json()["hits"][0]["score"]
+    assert near > 0, f"相关问句得分应为正，实测 {near}"
+    assert far < 0, f"无关问句得分应为负，实测 {far}"
+    assert near - far > 0.3, f"相关性差距过小：near={near} far={far}"
+
+    # 排名必须严格按 score 从高到低（放在方向判据之后，
+    # 否则 score=d 时会在这一行先挂，掩盖掉真正的方向错误信息）
+    assert scores == sorted(scores, reverse=True)
 
 
 def test_query_source_filter_forward_slash():
@@ -123,12 +145,21 @@ def test_query_source_filter_forward_slash():
     assert {h["source"] for h in hits} == {AUTH_SRC}
 
 
-def test_query_without_source_spans_files():
-    """不传 source = 全库检索，结果可以跨文件（对照上一条）"""
-    resp = client.post("/rag/query", json={"query": "令牌校验", "n": 3})
+def test_query_without_source_searches_whole_library():
+    """不传 source = 全库检索（对照上一条：传了 source 就只剩那一个文件）。
+
+    原来的判据是「同一问句的 3 条来源跨 ≥2 个文件」，但那是**检索质量差**的
+    副作用：auth.py 一治理（37 块），"令牌校验" 的前 3 名全落在 auth.py 里，
+    这个断言就失效了。用「问商品的事却要能在 items.py 找到」来判，
+    才真正证明「没有加过滤条件」——如果路由层偷偷默认只查 auth.py，必挂。
+    """
+    resp = client.post("/rag/query", json={"query": "删除商品需要管理员吗", "n": 3})
+    assert resp.status_code == 200
+
     hits = resp.json()["hits"]
     assert len(hits) == 3
-    assert len({h["source"] for h in hits}) > 1     # 实测 2 个来源
+    assert hits[0]["source"] == r"routers\items.py"   # 实测首条 0.1095
+    assert {h["source"] for h in hits} != {AUTH_SRC}  # 没有被限制在 auth.py
 
 
 def test_query_n_param_and_validation():

@@ -1,0 +1,10 @@
+{"id": "g01", "query": "接口被爬虫薅了怎么挡？", "expected_sources": ["routers/limits.py"], "round": 1}
+{"id": "g02", "query": "前端想要文字一个一个显示出来", "expected_sources": ["routers/stream.py"], "round": 1}
+{"id": "g03", "query": "登录后给的令牌多久失效？", "expected_sources": ["routers/auth.py"], "round": 1}
+{"id": "g04", "query": "怎么限制每分钟调用次数？", "expected_sources": ["routers/limits.py"], "round": 1}
+{"id": "g05", "query": "管理员才能做的操作怎么控制？", "expected_sources": ["routers/auth.py"], "round": 1}
+{"id": "g06", "query": "想把 DeepSeek 换成别的模型服务，要动几个文件？", "expected_sources": ["routers/llm.py"], "round": 2}
+{"id": "g07", "query": "换个后端 API 供应商麻烦吗？", "expected_sources": ["routers/llm.py"], "round": 2}
+{"id": "g08", "query": "用户手机关屏了，回来还能接着看到剩下的回答吗？", "expected_sources": ["routers/llm.py"], "round": 2}
+{"id": "g09", "query": "生成到一半网断了，已经出来的内容会不会丢？", "expected_sources": ["routers/llm.py"], "round": 2}
+{"id": "g10", "query": "程序在等数据库的时候会不会卡住别的请求？", "expected_sources": ["routers/llm.py"], "round": 2}
