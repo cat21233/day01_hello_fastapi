@@ -81,7 +81,6 @@ def validate_settings() -> None:
       2. 至少得有一个厂商配了 key（否则整个 LLM 功能等于废了）
     失败时抛出的 ConfigError 信息要写清楚「缺了什么、怎么补」。
     """
-    # 改后（新增这一段，原有两段检查保持不动）
     # ① 先查「印章」：它比 API key 更基础，缺了等于谁都能冒充谁。
     #    阈值 32 不是玄学：太短（如 "123456"）可以被离线暴力枚举出签名。
     if len(settings.jwt_secret_key.strip()) < 32:

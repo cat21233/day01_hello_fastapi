@@ -22,6 +22,7 @@ slowapi==0.1.10
 # --- 数据库 ---
 # 只列直接依赖：greenlet 是 SQLAlchemy 的传递依赖，交给 pip 解析
 SQLAlchemy==2.0.55
+pymysql==1.1.1           # MySQL 驱动（纯 Python，免编译）；URL 写 mysql+pymysql://
 
 # --- LLM 调用 ---
 openai==3.5.0

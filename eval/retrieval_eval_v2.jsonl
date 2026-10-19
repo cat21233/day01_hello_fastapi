@@ -1,0 +1,8 @@
+{"id": "h01", "query": "用户注册时填的密码会原样存进数据库吗？", "expected_sources": ["common/security.py"], "difficulty": "hard", "why": "歧义题：db_models.py 有存密码的字段、auth.py 管登录、真管事的是 security.py 的哈希。考「存密码这件事」到「哈希函数」的转换，且 db/auth 都是强力干扰项"}
+{"id": "h02", "query": "服务重启之后，之前登录的人需要重新登录吗？", "expected_sources": ["routers/auth.py"], "difficulty": "hard", "why": "歧义题：db.py 的语义是「重启数据不丢」，容易把人引去数据库；但登录态跟数据库无关，是 JWT 自包含决定的。考「登录态」到「令牌无状态」的转换"}
+{"id": "h03", "query": "从别的网站拉公开数据是哪个接口干的？", "expected_sources": ["routers/external.py"], "difficulty": "hard", "why": "歧义题：llm.py 也调外部 API（AI 推理），external.py 是拉数据。两个文件都「调外部」，考模型分不分得清「调 AI」和「拉数据」"}
+{"id": "h04", "query": "拦截恶意刷接口是在 Nginx 那一层配的吗？", "expected_sources": ["routers/limits.py"], "difficulty": "hard", "why": "反向题：Nginx 在语料里一个字都没有，真正的拦截在应用层 limits.py。考模型会不会因为「Nginx 不在语料里」就乱指别的文件"}
+{"id": "h05", "query": "创建用户的时候，地址是不是必须整个对象一起传？", "expected_sources": ["routers/users.py"], "difficulty": "medium", "why": "考「必须一起传吗」到「嵌套模型 + 可选字段」的转换；users.py 全是字段定义没有自然语言，是没治理过的裸代码"}
+{"id": "h06", "query": "传地址的时候能不能只给城市、街道先不填？", "expected_sources": ["routers/users.py"], "difficulty": "medium", "why": "h05 的改写：同一件事换个角度问（整体必填 → 部分可省）。成绩取两条里差的，防止单一措辞蒙对"}
+{"id": "h07", "query": "以后想从 SQLite 换成 MySQL，改动大吗？", "expected_sources": ["db.py", "config.py"], "difficulty": "medium", "why": "考「换数据库」到「连接串配置」的转换；与 q18「换模型厂商」形成镜像，看两个「换 X」会不会互相串"}
+{"id": "h08", "query": "接口返回的那个令牌里面到底装了什么信息？", "expected_sources": ["routers/auth.py"], "difficulty": "medium", "why": "考「令牌里装了什么」到「JWT 载荷/签名」的转换；「装了什么信息」跟语料里任何一块的字面都不重合"}
