@@ -58,3 +58,6 @@ study_day_learns/**/*.npy
 # WorkBuddy ä¼šè¯æ•°æ®ï¼ˆå­¦ä¹ æ¢é’ˆ / æ‰“å¡å·¥å…· / ä¸´æ—¶å®éªŒï¼Œä¸è¿›ç‰ˆæœ¬åº“ï¼‰
 .workbuddy/
 .chroma_probe/
+
+# ÅÀ³æÄæÏòÖĞ¼ä²úÎï
+.youdao_probe/
